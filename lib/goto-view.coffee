@@ -1,24 +1,49 @@
-{View} = require 'atom'
+
+path = require 'path'
+fs = require 'fs'
+{$$, SelectListView} = require 'atom'
+utils = require './symbol-utils'
 
 module.exports =
-class GotoView extends View
-  @content: ->
-    @div class: 'goto overlay from-top', =>
-      @div "The Goto package is Alive! It's ALIVE!", class: "message"
+class GotoView extends SelectListView
 
-  initialize: (serializeState) ->
-    atom.workspaceView.command "goto:toggle", => @toggle()
+  initialize: ->
+      super
+      @addClass('goto-view overlay from-top')
 
-  # Returns an object that can be retrieved when package is activated
-  serialize: ->
-
-  # Tear down any state and detach
   destroy: ->
+    @cancel()
     @detach()
 
-  toggle: ->
-    console.log "GotoView was toggled!"
-    if @hasParent()
-      @detach()
+  attach: ->
+    @storeFocusedElement()
+    atom.workspaceView.appendToTop(this)
+    @focusFilterEditor()
+
+  populate: (symbols) ->
+    @setItems(symbols)
+    @attach()
+
+  getFilterKey: -> 'name'
+
+  viewForItem: (symbol) ->
+    $$ ->
+      @li class: 'two-lines', =>
+        @div symbol.name, class: 'primary-line'
+        dir = path.basename(symbol.path)
+        text = "#{dir} #{symbol.position.row + 1}"
+        @div text, class: 'secondary-line'
+
+  getEmptyMessage: (itemCount) ->
+    if itemCount is 0
+      'No symbols found'
     else
-      atom.workspaceView.append(this)
+      super
+
+  confirmed: (symbol) ->
+    if not fs.existsSync(atom.project.resolve(symbol.path))
+      @setError('Selected file does not exist')
+      setTimeout((=> @setError()), 2000)
+    else
+      @cancel()
+      utils.gotoSymbol(symbol)

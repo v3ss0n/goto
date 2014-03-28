@@ -1,20 +1,41 @@
 
 SymbolIndex = require('./symbol-index')
+GotoView = require('./goto-view')
 
 module.exports =
+
+  index: null
   gotoView: null
 
-  index: new SymbolIndex()
-
   activate: (state) ->
-    atom.workspaceView.command "goto:rebuild", => @rebuild()
+    @index = new SymbolIndex(state?.entries)
+    @gotoView = new GotoView()
+    atom.workspaceView.command "goto:project-symbol", => @gotoProjectSymbol()
+    atom.workspaceView.command "goto:file-symbol", => @gotoFileSymbol()
+    atom.workspaceView.command "goto:declaration", => @gotoDeclaration()
+    atom.workspaceView.command "goto:rebuild-index", => @index.rebuild()
+    atom.workspaceView.command "goto:invalidate-index", => @index.invalidate()
 
   deactivate: ->
-    @index.destroy()
+    @index?.destroy()
+    @index = null
     @gotoView?.destroy()
+    @gotoView = null
 
-  serialize: ->
-    # gotoViewState: @gotoView.serialize()
+  serialize: -> { 'entries': @index.entries }
 
-  rebuild: ->
-    @index.rebuild()
+  gotoDeclaration: ->
+    symbols = @index.gotoDeclaration()
+    if symbols
+      @gotoView.populate(symbols)
+
+  gotoProjectSymbol: ->
+    symbols = @index.getAllSymbols()
+    @gotoView.populate(symbols)
+
+  gotoFileSymbol: ->
+    e = atom.workspace.getActiveEditor()
+    filePath = e?.getPath()
+    if filePath
+      symbols = @index.getEditorSymbols(e)
+      @gotoView.populate(symbols)

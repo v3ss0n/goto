@@ -1,11 +1,17 @@
-# Keybindings require three things to be fully defined: A selector that is
-# matched against the focused element, the keystroke and the command to
-# execute.
-#
-# Below is a basic keybinding which registers on all platforms by applying to
-# the root workspace element.
 
-# For more detailed documentation see
-# https://atom.io/docs/latest/advanced/keymaps
-'.workspace':
-  'ctrl-alt-o': 'goto:toggle'
+# The .workspace was added to increase specificity so it would override
+# symbols-view
+
+'.platform-darwin .workspace .editor':
+  'cmd-r': 'goto:file-symbol'
+  'cmd-alt-down': 'goto:declaration'
+
+'.platform-win32 .workspace .editor':
+  'ctrl-r': 'goto:file-symbol'
+  'ctrl-alt-down': 'goto:declaration'
+
+'.platform-darwin .workspace':
+  'cmd-R': 'goto:project-symbol'
+
+'.platform-win32 .workspace':
+  'ctrl-R': 'goto:project-symbol'

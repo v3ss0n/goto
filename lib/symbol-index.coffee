@@ -1,52 +1,172 @@
 
+fs = require 'fs'
 path = require 'path'
 _ = require 'underscore'
+generate = require './symbol-generator'
+utils = require './symbol-utils'
 
 module.exports =
 class SymbolIndex
-  constructor: ->
+  constructor: (entries)->
+
     @entries = {}
-    # maps from path to a symbols array
+    # The cache of symbols which maps from fully-qualified-name (absolute path) to either an
+    # array of symbols or null if the file needs to be rescanned.
+    #
+    # If the index needs to be rebuilt, it will contain only individual files that have been
+    # scanned by the Goto File Symbol command.
+
+    @rescanDirectories = true
+    # If true we must rescan the directories to provide all project symbols.
+    #
+    # The @entries starts out empty and we need to scan the project directories to find all
+    # symbols.  Once we've done this once we have all of the filenames and can mark them as
+    # invalid when they are modified by setting their @entries value to null.  If something
+    # invalidates our list of filenames (e.g. the project path is changed), directories need
+    # to be rescanned again.
+    #
+    # Note that we may have values in @entries even if directories have not been scaned since
+    # the Goto File Symbols command will populate it.  We allow this so that individual file
+    # symbols can be cached without requiring a full project scan for cases where the Goto
+    # Project Symbols command is not used.
+
+    @root = atom.project.getRootDirectory()
+    @repo = atom.project.getRepo()
+    @ignoredNames = atom.config.get('core.ignoredNames') ? []
+    if typeof @ignoredNames is 'string'
+      @ignoredNames = [ ignoredNames ]
+
+    @subscribe()
+
+  invalidate: ->
+    @entries = {}
+    @rescanDirectories = true
+
+  subscribe: () ->
+    atom.project.on 'path-changed', =>
+      @root = atom.project.getRootDirectory()
+      @repo = atom.project.getRepo()
+      @invalidate()
+
+    atom.config.observe 'core.ignoredNames', =>
+      @ignoredNames = atom.config.get('core.ignoredNames') ? []
+      if typeof @ignoredNames is 'string'
+        @ignoredNames = [ ignoredNames ]
+      @invalidate()
+
+    atom.project.eachBuffer (buffer) =>
+      # TODO: Do path-changed and reloaded trigger contents-modified?
+      buffer.on 'contents-modified', =>
+        @entries[buffer.getPath()] = null
+
+      buffer.on 'destroyed', =>
+        buffer.off()
+
+    atom.workspace.eachEditor (editor) =>
+      editor.on 'grammar-changed', =>
+        @entries[editor.getPath()] = null
+
+      editor.on 'destroyed', =>
+        editor.off()
 
   destroy: ->
-    @entries = {} # free up memory
+    @entries = null
+
+  getEditorSymbols: (editor) ->
+    # Return the symbols for the given editor, rescanning the file if necessary.
+    fqn = editor.getPath()
+    if not @entries[fqn] and @keepPath(fqn)
+      @entries[fqn] = generate(fqn, editor.getGrammar(), editor.getText())
+    return @entries[fqn]
+
+  getAllSymbols: ->
+    # Returns the symbols for the entire project.
+    @update()
+
+    s = []
+    for fqn, symbols of @entries
+      Array::push.apply s, symbols
+    return s
+
+  update: ->
+    if @rescanDirectories
+      @rebuild()
+    else
+      for fqn, symbols of @entries
+        if symbols is null and @keepPath(fqn)
+          @processFile(fqn)
 
   rebuild: ->
-    @entries = {}
+    if @root
+      @processDirectory(@root.path)
+    @rescanDirectories = false
 
-    repo = atom.project.getRepo()
-    if not repo
-      return
+  gotoDeclaration: ->
+    e = atom.workspace.getActiveEditor()
+    word = e?.getTextInRange(e.getCursor().getCurrentWordBufferRange())
+    if not word?.length
+      return null
 
-    ignoredNames = atom.config.get('core.ignoredNames') ? []
-    if typeof ignoredNames is 'string'
-      ignoredNames = [ ignoredNames ]
+    @update()
 
-    root = atom.project.getRootDirectory()
+    # TODO: I'm quite sure this is not using Coffeescript idioms.  Rewrite.
 
-    console.log('rebuild: repo=', repo, 'ignoredNames=', ignoredNames, 'root=', root)
-    @processDirectory(root, repo, ignoredNames)
+    filePath = e.getPath()
+    matches = []
+    @matchSymbol(matches, word, @entries[filePath])
+    for fqn, symbols of @entries
+      if fqn isnt filePath
+        @matchSymbol(matches, word, symbols)
 
-    console.log('complete:', @entries)
+    if matches.length is 0
+      return null
 
-  processDirectory: (dir, repo, ignoredNames) ->
-    entries = (e for e in dir.getEntriesSync() when @keepPath(e.path, repo, ignoredNames))
+    if matches.length > 1
+      return matches
 
-    for e in entries
-      if e.contains? # is a directory
-        @processDirectory(e, repo, ignoredNames)
-      else
-        @entries[e.getPath()] = []
+    utils.gotoSymbol(matches[0])
 
-  keepPath: (filePath, repo, ignoredNames) ->
-    if repo.isPathIgnored(filePath)
-      return false
+  matchSymbol: (matches, word, symbols) ->
+    if symbols
+      for symbol in symbols
+        if symbol.name is word
+          matches.push(symbol)
 
-    if _.contains(ignoredNames, path.basename(filePath))
+  processDirectory: (dirPath) ->
+    entries = fs.readdirSync(dirPath)
+
+    dirs = []
+
+    for entry in entries
+      fqn = path.join(dirPath, entry)
+      if @keepPath(fqn)
+        stats = fs.statSync(fqn)
+        if stats.isDirectory()
+          dirs.push(fqn)
+        else if stats.isFile()
+          @processFile(fqn)
+    entries = null
+
+    for dir in dirs
+      @processDirectory(dir)
+
+  processFile: (fqn) ->
+    text = fs.readFileSync(fqn, { encoding: 'utf8' })
+    grammar = atom.syntax.selectGrammar(fqn, text)
+    @entries[fqn] = generate(fqn, grammar, text)
+
+  keepPath: (filePath) ->
+    # Should we keep this path in @entries?  It is not kept if it is excluded by the
+    # core ignoredNames setting or if the associated git repo ignore it.
+
+    if _.contains(@ignoredNames, path.basename(filePath))
       return false
 
     ext = path.extname(filePath)
-    if ext and _.contains(ignoredNames, '*#{ext}')
+    if ext and _.contains(@ignoredNames, '*#{ext}')
+      return false
+
+    if @repo and @repo.isPathIgnored(filePath)
       return false
 
     return true

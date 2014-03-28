@@ -3,8 +3,16 @@
   "main": "./lib/index",
   "version": "0.0.0",
   "description": "Provides Go To Symbol based on syntaxes",
-  "activationEvents": ["goto:rebuild"],
-  "repository": "https://github.com/atom/goto",
+  "author": "Michael Kleehammer <michael@kleehammer.com>",
+  "activationEvents": {
+    "goto:file-symbol": ".editor",
+    "goto:declaration": ".editor",
+    "goto:project-symbol": null,
+    "goto:rebuild-index": null,
+    "goto:invalidate-index": null
+  },
+  "repository": "https://github.com/mkleehammer/goto",
+  "bugs": "http://github.com/mkleehammer/goto/issues",
   "license": "MIT",
   "engines": {
     "atom": ">0.50.0"

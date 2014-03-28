@@ -1,15 +1,18 @@
-# See https://atom.io/docs/latest/creating-a-package#menus for more details
 'context-menu':
   '.overlayer':
-      'Enable goto': 'goto:toggle'
+      'Goto Declaration': 'goto:declaration'
 
 'menu': [
   {
     'label': 'Packages'
     'submenu': [
-      'label': 'goto'
+      'label': 'Goto'
       'submenu': [
-        { 'label': 'Toggle', 'command': 'goto:toggle' }
+        { 'label': 'Goto File Symbol', 'command': 'goto:file-symbol' },
+        { 'label': 'Goto Project Symbol', 'command': 'goto:project-symbol' },
+        { 'label': 'Goto Declaration', 'command': 'goto:declaration' },
+        { 'label': 'Invalidate Index', 'command': 'goto:invalidate-index' },
+        { 'label': 'Rebuild Index', 'command': 'goto:rebuild-index' }
       ]
     ]
   }
