@@ -1,7 +1,7 @@
 {
   "name": "goto",
   "main": "./lib/index",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Provides Go To Symbol based on syntaxes",
   "author": "Michael Kleehammer <michael@kleehammer.com>",
   "activationEvents": {
