@@ -2,6 +2,7 @@
 fs = require 'fs'
 path = require 'path'
 _ = require 'underscore'
+minimatch = require 'minimatch'
 generate = require './symbol-generator'
 utils = require './symbol-utils'
 
@@ -36,6 +37,10 @@ class SymbolIndex
     if typeof @ignoredNames is 'string'
       @ignoredNames = [ ignoredNames ]
 
+    @logToConsole = atom.config.get('goto.logToConsole') ? false
+    @moreIgnoredNames = atom.config.get('goto.moreIgnoredNames') ? ''
+    @moreIgnoredNames = (n for n in @moreIgnoredNames.split(/[, \t]+/) when n?.length)
+
     @subscribe()
 
   invalidate: ->
@@ -52,6 +57,11 @@ class SymbolIndex
       @ignoredNames = atom.config.get('core.ignoredNames') ? []
       if typeof @ignoredNames is 'string'
         @ignoredNames = [ ignoredNames ]
+      @invalidate()
+
+    atom.config.observe 'goto.moreIgnoredNames', =>
+      @moreIgnoredNames = atom.config.get('goto.moreIgnoredNames') ? ''
+      @moreIgnoredNames = (n for n in @moreIgnoredNames.split(/[, \t]+/) when n?.length)
       @invalidate()
 
     atom.project.eachBuffer (buffer) =>
@@ -133,6 +143,9 @@ class SymbolIndex
           matches.push(symbol)
 
   processDirectory: (dirPath) ->
+    if @logToConsole
+      console.log('GOTO: directory', dirPath)
+
     entries = fs.readdirSync(dirPath)
 
     dirs = []
@@ -145,12 +158,17 @@ class SymbolIndex
           dirs.push(fqn)
         else if stats.isFile()
           @processFile(fqn)
+      else
+        if @logToConsole
+          console.log('GOTO: ignoring', fqn)
     entries = null
 
     for dir in dirs
       @processDirectory(dir)
 
   processFile: (fqn) ->
+    if @logToConsole
+      console.log('GOTO: file', fqn)
     text = fs.readFileSync(fqn, { encoding: 'utf8' })
     grammar = atom.syntax.selectGrammar(fqn, text)
     @entries[fqn] = generate(fqn, grammar, text)
@@ -159,14 +177,20 @@ class SymbolIndex
     # Should we keep this path in @entries?  It is not kept if it is excluded by the
     # core ignoredNames setting or if the associated git repo ignore it.
 
-    if _.contains(@ignoredNames, path.basename(filePath))
+    base = path.basename(filePath)
+
+    if _.contains(@ignoredNames, base)
       return false
 
-    ext = path.extname(filePath)
+    ext = path.extname(base)
     if ext and _.contains(@ignoredNames, '*#{ext}')
       return false
 
     if @repo and @repo.isPathIgnored(filePath)
       return false
+
+    for glob in @moreIgnoredNames
+      if minimatch(base, glob)
+        return false
 
     return true

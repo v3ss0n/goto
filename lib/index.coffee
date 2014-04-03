@@ -4,6 +4,10 @@ GotoView = require('./goto-view')
 
 module.exports =
 
+  configDefaults:
+    logToConsole: false
+    moreIgnoredNames: ''
+
   index: null
   gotoView: null
 

@@ -26,3 +26,12 @@ While symbols are automatically kept up to date as buffers are modified, the pac
 yet watch for external file modifications.  If you change files externally, such as through a
 "git pull" or switching branches, you can use run Invalidate Index to clear the current index
 so it will be rebuilt when needed or Rebuild Index to rebuild it immediately.
+
+## Options
+
+### More Ignored Names
+
+A whitespace and/or comma separated list of globs (filenames or wildcards) to ignore, applied
+to both files and directories.  This can be useful for speeding up the rebuilding of the index.
+
+Example: `node_modules, *.sql`
