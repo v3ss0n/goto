@@ -41,6 +41,11 @@ class SymbolIndex
     @moreIgnoredNames = atom.config.get('goto.moreIgnoredNames') ? ''
     @moreIgnoredNames = (n for n in @moreIgnoredNames.split(/[, \t]+/) when n?.length)
 
+    @noGrammar = {}
+    # File extensions that we've found have no grammar.  There are probably a lot of files
+    # such as *.png that we don't have grammars for.  Instead of hardcoding them we'll record
+    # them on the fly.  We'll clear this when we rescan directories.
+
     @subscribe()
 
   invalidate: ->
@@ -110,6 +115,7 @@ class SymbolIndex
     if @root
       @processDirectory(@root.path)
     @rescanDirectories = false
+    console.log('No Grammar:', Object.keys(@noGrammar)) if @logToConsole
 
   gotoDeclaration: ->
     e = atom.workspace.getActiveEditor()
@@ -158,39 +164,46 @@ class SymbolIndex
           dirs.push(fqn)
         else if stats.isFile()
           @processFile(fqn)
-      else
-        if @logToConsole
-          console.log('GOTO: ignoring', fqn)
     entries = null
 
     for dir in dirs
       @processDirectory(dir)
 
   processFile: (fqn) ->
-    if @logToConsole
-      console.log('GOTO: file', fqn)
+    console.log('GOTO: file', fqn) if @logToConsole
     text = fs.readFileSync(fqn, { encoding: 'utf8' })
     grammar = atom.syntax.selectGrammar(fqn, text)
-    @entries[fqn] = generate(fqn, grammar, text)
+    if grammar?.name isnt "Null Grammar"
+      @entries[fqn] = generate(fqn, grammar, text)
+    else
+      @noGrammar[path.extname(fqn)] = true
 
   keepPath: (filePath) ->
     # Should we keep this path in @entries?  It is not kept if it is excluded by the
     # core ignoredNames setting or if the associated git repo ignore it.
 
     base = path.basename(filePath)
-
-    if _.contains(@ignoredNames, base)
-      return false
-
     ext = path.extname(base)
-    if ext and _.contains(@ignoredNames, '*#{ext}')
-      return false
 
-    if @repo and @repo.isPathIgnored(filePath)
+    if @noGrammar[ext]?
+      console.log('GOTO: ignore/grammar', filePath) if @logToConsole
       return false
 
     for glob in @moreIgnoredNames
       if minimatch(base, glob)
+        console.log('GOTO: ignore/core', filePath) if @logToConsole
         return false
+
+    if _.contains(@ignoredNames, base)
+      console.log('GOTO: ignore/core', filePath) if @logToConsole
+      return false
+
+    if ext and _.contains(@ignoredNames, '*#{ext}')
+      console.log('GOTO: ignore/core', filePath) if @logToConsole
+      return false
+
+    if @repo and @repo.isPathIgnored(filePath)
+      console.log('GOTO: ignore/git', filePath) if @logToConsole
+      return false
 
     return true
