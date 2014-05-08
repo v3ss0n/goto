@@ -158,8 +158,8 @@ class SymbolIndex
 
     for entry in entries
       fqn = path.join(dirPath, entry)
-      if @keepPath(fqn)
-        stats = fs.statSync(fqn)
+      stats = fs.statSync(fqn)
+      if @keepPath(fqn,stats.isFile())
         if stats.isDirectory()
           dirs.push(fqn)
         else if stats.isFile()
@@ -178,14 +178,15 @@ class SymbolIndex
     else
       @noGrammar[path.extname(fqn)] = true
 
-  keepPath: (filePath) ->
+  keepPath: (filePath,isFile=true) ->
     # Should we keep this path in @entries?  It is not kept if it is excluded by the
     # core ignoredNames setting or if the associated git repo ignore it.
 
     base = path.basename(filePath)
     ext = path.extname(base)
 
-    if @noGrammar[ext]?
+    # files with this extensions are known not to have a grammar.
+    if isFile and @noGrammar[ext]?
       console.log('GOTO: ignore/grammar', filePath) if @logToConsole
       return false
 
