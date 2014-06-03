@@ -7,6 +7,7 @@ module.exports =
   configDefaults:
     logToConsole: false
     moreIgnoredNames: ''
+    autoScroll: true
 
   index: null
   gotoView: null
@@ -38,8 +39,9 @@ module.exports =
     @gotoView.populate(symbols)
 
   gotoFileSymbol: ->
-    e = atom.workspace.getActiveEditor()
+    v = atom.workspaceView.getActiveView()
+    e = v?.getEditor()
     filePath = e?.getPath()
     if filePath
       symbols = @index.getEditorSymbols(e)
-      @gotoView.populate(symbols)
+      @gotoView.populate(symbols, v)

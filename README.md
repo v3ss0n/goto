@@ -35,3 +35,12 @@ A whitespace and/or comma separated list of globs (filenames or wildcards) to ig
 to both files and directories.  This can be useful for speeding up the rebuilding of the index.
 
 Example: `node_modules, *.sql`
+
+### Auto Scroll
+
+By default the Goto File Symbol command will scroll the selected command into view.  Pressing
+`Esc` to cancel the command restores the position of the screen.  Uncheck this option to
+disable the scrolling.
+
+Note that the Goto Project Symbol does not scroll the editor since it displays choices from
+multiple files.
