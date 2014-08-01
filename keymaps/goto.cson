@@ -15,3 +15,8 @@
 
 '.platform-win32 .workspace':
   'ctrl-R': 'goto:project-symbol'
+
+'.platform-linux .workspace .editor':
+  'ctrl-r': 'goto:file-symbol'
+  'ctrl-shift-r': 'goto:project-symbol'
+  'ctrl-alt-down': 'goto:declaration'
