@@ -3,28 +3,49 @@
 
 # I'm expecting this to grow a lot.  We'll also need configuration
 # that can be added to dynamically, I think.
+
 resym = /// ^ (
     entity.name.type.class
   | entity.name.function
   | entity.other.attribute-name.class
   ) ///
 
+# A simplistic regexp that is used to match the item immediately following.  I'll eventually
+# need something a bit more complex.
+rebefore =  /// ^ (
+  meta.rspec.behaviour
+) ///
+
 module.exports = (path, grammar, text) ->
   lines = grammar.tokenizeLines(text)
 
   symbols = []
 
+  nextIsSymbol = false
+
   for tokens, lineno in lines
     offset = 0
     prev = null
     for token in tokens
-      if issymbol(token)
-        if not mergeAdjacent(prev, token, symbols, offset)
-          symbols.push({ name: token.value, path: path, position: new Point(lineno, offset) })
-          prev = token
+      if nextIsSymbol or issymbol(token)
+        nextIsSymbol = false
+
+        symbol = cleanSymbol(token)
+        if symbol
+          if not mergeAdjacent(prev, token, symbols, offset)
+            symbols.push({ name: token.value, path: path, position: new Point(lineno, offset) })
+            prev = token
+
+      nextIsSymbol = isbefore(token)
+
       offset += token.bufferDelta
 
   symbols
+
+cleanSymbol = (token) ->
+  # Return the token name.  Will return null if symbol is not a valid name.
+  name = token.value.trim().replace(/"/g, '')
+  name.length ? name : null;
 
 issymbol = (token) ->
   # I'm a little unclear about this :\ so this might be much easier than
@@ -33,6 +54,15 @@ issymbol = (token) ->
   if token.value.trim().length and token.scopes
     for scope in token.scopes
       if resym.test(scope)
+        return true
+  return false
+
+isbefore = (token) ->
+  # Does this token indicate that the following token is a symbol?
+  if token.value.trim().length and token.scopes
+    for scope in token.scopes
+      console.log('checking', scope, '=', rebefore.test(scope))
+      if rebefore.test(scope)
         return true
   return false
 
