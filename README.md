@@ -1,5 +1,7 @@
 # goto package
 
+**This package has been unpublished because I am no longer using Atom.  Let me know if you are willing to take this project over.**
+
 Provides "goto symbol" functionality for the current file or the entire project.
 
 This is a replacement for Atom's built-in symbols-view package that uses Atom's own syntax files
