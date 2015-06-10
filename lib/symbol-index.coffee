@@ -184,8 +184,8 @@ class SymbolIndex
   processFile: (fqn) ->
     console.log('GOTO: file', fqn) if @logToConsole
     text = fs.readFileSync(fqn, { encoding: 'utf8' })
-    grammar = atom.syntax.selectGrammar(fqn, text)
-    if grammar?.name isnt "Null Grammar"
+    grammar = atom.grammars.selectGrammar(fqn, text)
+    if grammar?.scopeName isnt 'text.plain.null-grammar'
       @entries[fqn] = generate(fqn, grammar, text)
     else
       @noGrammar[path.extname(fqn)] = true
