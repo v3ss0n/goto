@@ -5,6 +5,7 @@ _ = require 'underscore'
 minimatch = require 'minimatch'
 generate = require './symbol-generator'
 utils = require './symbol-utils'
+{CompositeDisposable} = require 'atom'
 
 module.exports =
 class SymbolIndex
@@ -47,6 +48,7 @@ class SymbolIndex
     # such as *.png that we don't have grammars for.  Instead of hardcoding them we'll record
     # them on the fly.  We'll clear this when we rescan directories.
 
+    @disposables = new CompositeDisposable
     @subscribe()
 
   invalidate: ->
@@ -54,9 +56,9 @@ class SymbolIndex
     @rescanDirectories = true
 
   subscribe: () ->
-    atom.project.on 'path-changed', =>
-      @root = atom.project.getRootDirectory()
-      @repo = atom.project.getRepo()
+    @disposables.add atom.project.onDidChangePaths =>
+      @roots = atom.project.getDirectories()
+      @getProjectRepositories()
       @invalidate()
 
     atom.config.observe 'core.ignoredNames', =>
@@ -70,23 +72,27 @@ class SymbolIndex
       @moreIgnoredNames = (n for n in @moreIgnoredNames.split(/[, \t]+/) when n?.length)
       @invalidate()
 
-    atom.project.eachBuffer (buffer) =>
-      # TODO: Do path-changed and reloaded trigger contents-modified?
-      buffer.on 'contents-modified', =>
-        @entries[buffer.getPath()] = null
-
-      buffer.on 'destroyed', =>
-        buffer.off()
-
-    atom.workspace.eachEditor (editor) =>
-      editor.on 'grammar-changed', =>
+    atom.workspace.observeTextEditors (editor) =>
+      editor_disposables = new CompositeDisposable
+      # Editor events
+      editor_disposables.add editor.onDidChangeGrammar =>
         @entries[editor.getPath()] = null
 
-      editor.on 'destroyed', =>
-        editor.off()
+      editor_disposables.add editor.onDidDestroy ->
+        editor_disposables.dispose()
+
+      # Buffer events
+      buffer = editor.getBuffer()
+      buffer_disposables = new CompositeDisposable
+      buffer_disposables.add buffer.onDidStopChanging =>
+        @entries[buffer.getPath()] = null
+
+      buffer_disposables.add buffer.onDidDestroy ->
+        buffer_disposables.dispose()
 
   destroy: ->
     @entries = null
+    @disposables.dispose()
 
   getEditorSymbols: (editor) ->
     # Return the symbols for the given editor, rescanning the file if necessary.
