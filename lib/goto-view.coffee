@@ -89,7 +89,7 @@ class GotoView extends SelectListView
   confirmed: (symbol) ->
     @forgetCancelPosition()
 
-    if not fs.existsSync(atom.project.resolve(symbol.path))
+    if not fs.existsSync(symbol.path)
       @setError('Selected file does not exist')
       setTimeout((=> @setError()), 2000)
     else if atom.workspace.getActiveTextEditor()
