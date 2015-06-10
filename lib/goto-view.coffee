@@ -37,8 +37,8 @@ class GotoView extends SelectListView
     atom.workspaceView.appendToTop(this)
     @focusFilterEditor()
 
-  populate: (symbols, view) ->
-    @rememberCancelPosition(view)
+  populate: (symbols, editor) ->
+    @rememberCancelPosition(editor)
     @setItems(symbols)
     @attach()
 
