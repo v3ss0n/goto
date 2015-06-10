@@ -78,17 +78,11 @@ class SymbolIndex
       editor_disposables.add editor.onDidChangeGrammar =>
         @entries[editor.getPath()] = null
 
+      editor_disposables.add editor.onDidStopChanging =>
+        @entries[editor.getPath()] = null
+
       editor_disposables.add editor.onDidDestroy ->
         editor_disposables.dispose()
-
-      # Buffer events
-      buffer = editor.getBuffer()
-      buffer_disposables = new CompositeDisposable
-      buffer_disposables.add buffer.onDidStopChanging =>
-        @entries[buffer.getPath()] = null
-
-      buffer_disposables.add buffer.onDidDestroy ->
-        buffer_disposables.dispose()
 
   destroy: ->
     @entries = null
