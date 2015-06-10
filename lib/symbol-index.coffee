@@ -31,8 +31,9 @@ class SymbolIndex
     # symbols can be cached without requiring a full project scan for cases where the Goto
     # Project Symbols command is not used.
 
-    @root = atom.project.getRootDirectory()
-    @repo = atom.project.getRepo()
+    @roots = atom.project.getDirectories()
+    @getProjectRepositories()
+
     @ignoredNames = atom.config.get('core.ignoredNames') ? []
     if typeof @ignoredNames is 'string'
       @ignoredNames = [ ignoredNames ]
@@ -112,8 +113,8 @@ class SymbolIndex
           @processFile(fqn)
 
   rebuild: ->
-    if @root
-      @processDirectory(@root.path)
+    for root in @roots
+      @processDirectory(root.path)
     @rescanDirectories = false
     console.log('No Grammar:', Object.keys(@noGrammar)) if @logToConsole
 
@@ -147,6 +148,11 @@ class SymbolIndex
       for symbol in symbols
         if symbol.name is word
           matches.push(symbol)
+
+  getProjectRepositories: ->
+    Promise.all(@roots.map(
+      atom.project.repositoryForDirectory.bind(atom.project)
+      )).then((repos) => @repos = repos)
 
   processDirectory: (dirPath) ->
     if @logToConsole
