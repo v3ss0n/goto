@@ -9,7 +9,8 @@ class GotoView extends SelectListView
 
   initialize: ->
     super
-    @addClass('goto-view overlay from-top')
+    @addClass('goto-view fuzzy-finder')
+    # Use fuzzy-finder styles
 
     @currentEditor = null
     # If this is non-null, then the command was 'Goto File Symbol' and this is the current file's
@@ -24,7 +25,7 @@ class GotoView extends SelectListView
 
   destroy: ->
     @cancel()
-    @detach()
+    @panel?.destroy()
 
   cancel: ->
     super
@@ -32,15 +33,10 @@ class GotoView extends SelectListView
     @currentEditor = null
     @cancelPosition = null
 
-  attach: ->
-    @storeFocusedElement()
-    atom.workspaceView.appendToTop(this)
-    @focusFilterEditor()
-
   populate: (symbols, editor) ->
     @rememberCancelPosition(editor)
     @setItems(symbols)
-    @attach()
+    @show()
 
   rememberCancelPosition: (editor) ->
     if not editor or not atom.config.get('goto.autoScroll')
@@ -95,3 +91,15 @@ class GotoView extends SelectListView
     else if atom.workspace.getActiveTextEditor()
       @cancel()
       utils.gotoSymbol(symbol)
+
+  show: ->
+    @storeFocusedElement()
+    @panel ?= atom.workspace.addModalPanel(item: this)
+    @panel.show()
+    @focusFilterEditor()
+
+  hide: ->
+    @panel?.hide()
+
+  cancelled: ->
+    @hide()
