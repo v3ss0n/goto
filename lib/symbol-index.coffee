@@ -215,8 +215,10 @@ class SymbolIndex
       console.log('GOTO: ignore/core', filePath) if @logToConsole
       return false
 
-    if @repo and @repo.isPathIgnored(filePath)
-      console.log('GOTO: ignore/git', filePath) if @logToConsole
-      return false
+    if @repos
+      for repo in @repos
+        if repo?.isPathIgnored(filePath)
+          console.log('GOTO: ignore/git', filePath) if @logToConsole
+          return false
 
     return true
