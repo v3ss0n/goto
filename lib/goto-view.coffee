@@ -11,13 +11,13 @@ class GotoView extends SelectListView
     super
     @addClass('goto-view overlay from-top')
 
-    @currentView = null
+    @currentEditor = null
     # If this is non-null, then the command was 'Goto File Symbol' and this is the current file's
-    # editor view.  Autoscroll to the selected item.
+    # editor view. Autoscroll to the selected item.
 
     @cancelPosition = null
     # The original position of the screen and selections so they can be restored if the user
-    # cancels.  This is only set by the Goto File Symbol command when auto-scrolling is enabled.
+    # cancels. This is only set by the Goto File Symbol command when auto-scrolling is enabled.
     # If set, it is an object containing:
     #  :firstRow - the editor's first visible row
     #  :selections - the original selections
@@ -29,7 +29,7 @@ class GotoView extends SelectListView
   cancel: ->
     super
     @restoreCancelPosition()
-    @currentView = null
+    @currentEditor = null
     @cancelPosition = null
 
   attach: ->
@@ -42,22 +42,23 @@ class GotoView extends SelectListView
     @setItems(symbols)
     @attach()
 
-  rememberCancelPosition: (view) ->
-    if not view or not atom.config.get('goto.autoScroll')
+  rememberCancelPosition: (editor) ->
+    if not editor or not atom.config.get('goto.autoScroll')
       return
 
-    @currentView = view
+    @currentEditor = editor
     @cancelPosition =
-      top: view.scrollTop()
-      selections: view.getEditor().getSelectedBufferRanges()
+      position: editor.getCursorBufferPosition()
+      selections: editor.getSelectedBufferRanges()
 
   restoreCancelPosition: ->
-    if @currentView and @cancelPosition
-      @currentView.getEditor().setSelectedBufferRanges(@cancelPosition.selections)
-      @currentView.scrollTop(@cancelPosition.top)
+    if @currentEditor and @cancelPosition
+      @currentEditor.setCursorBufferPosition(@cancelPosition.position)
+      if @cancelPosition.selections
+        @currentEditor.setSelectedBufferRanges(@cancelPosition.selections)
 
   forgetCancelPosition: ->
-    @currentView = null
+    @currentEditor = null
     @cancelPosition = null
 
   getFilterKey: -> 'name'
@@ -66,14 +67,10 @@ class GotoView extends SelectListView
     # Hook the selection of an item so we can scroll the current buffer to the item.
     super
     symbol = @getSelectedItem()
-    @onItemSelected(view, symbol)
+    @onItemSelected(symbol)
 
-  onItemSelected: (view, symbol) ->
-    if @currentView
-      editor = @currentView.getEditor()
-      @currentView.scrollToBufferPosition(symbol.position, center: true)
-      editor.setCursorBufferPosition(symbol.position)
-      editor.moveCursorToFirstCharacterOfLine()
+  onItemSelected: (symbol) ->
+    @currentEditor?.setCursorBufferPosition(symbol.position)
 
   viewForItem: (symbol) ->
     $$ ->
@@ -95,6 +92,6 @@ class GotoView extends SelectListView
     if not fs.existsSync(atom.project.resolve(symbol.path))
       @setError('Selected file does not exist')
       setTimeout((=> @setError()), 2000)
-    else
+    else if atom.workspace.getActiveTextEditor()
       @cancel()
       utils.gotoSymbol(symbol)
