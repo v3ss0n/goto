@@ -38,7 +38,7 @@ module.exports = (path, grammar, text) ->
 
       nextIsSymbol = isbefore(token)
 
-      offset += token.bufferDelta
+      offset += token.value.length
 
   symbols
 
