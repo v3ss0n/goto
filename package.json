@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "underscore": "~1.6.0",
-    "minimatch": "0.2.14"
+    "minimatch": "0.2.14",
+    "atom-space-pen-views": "^2.0.3"
   }
 }

@@ -1,7 +1,7 @@
 
 path = require 'path'
 fs = require 'fs'
-{$$, SelectListView} = require 'atom'
+{$$, SelectListView} = require 'atom-space-pen-views'
 utils = require './symbol-utils'
 
 module.exports =
