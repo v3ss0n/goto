@@ -34,7 +34,7 @@ module.exports =
 
   gotoDeclaration: ->
     symbols = @index.gotoDeclaration()
-    if symbols
+    if symbols and symbols.length
       @gotoView.populate(symbols)
 
   gotoProjectSymbol: ->

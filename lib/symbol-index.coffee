@@ -125,8 +125,10 @@ class SymbolIndex
     console.log('No Grammar:', Object.keys(@noGrammar)) if @logToConsole
 
   gotoDeclaration: ->
-    e = atom.workspace.getActiveEditor()
-    word = e?.getTextInRange(e.getCursor().getCurrentWordBufferRange())
+    editor = atom.workspace.getActiveTextEditor()
+    # Make a word selection based on current cursor
+    editor?.selectWordsContainingCursors()
+    word = editor?.getSelectedText()
     if not word?.length
       return null
 
@@ -134,7 +136,7 @@ class SymbolIndex
 
     # TODO: I'm quite sure this is not using Coffeescript idioms.  Rewrite.
 
-    filePath = e.getPath()
+    filePath = editor.getPath()
     matches = []
     @matchSymbol(matches, word, @entries[filePath])
     for fqn, symbols of @entries
@@ -165,7 +167,6 @@ class SymbolIndex
       console.log('GOTO: directory', dirPath)
 
     entries = fs.readdirSync(dirPath)
-
     dirs = []
 
     for entry in entries
@@ -176,6 +177,7 @@ class SymbolIndex
           dirs.push(fqn)
         else if stats.isFile()
           @processFile(fqn)
+
     entries = null
 
     for dir in dirs
@@ -190,7 +192,7 @@ class SymbolIndex
     else
       @noGrammar[path.extname(fqn)] = true
 
-  keepPath: (filePath,isFile=true) ->
+  keepPath: (filePath, isFile = true) ->
     # Should we keep this path in @entries?  It is not kept if it is excluded by the
     # core ignoredNames setting or if the associated git repo ignore it.
 
