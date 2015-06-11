@@ -15,11 +15,14 @@ module.exports =
   activate: (state) ->
     @index = new SymbolIndex(state?.entries)
     @gotoView = new GotoView()
-    atom.workspaceView.command "goto:project-symbol", => @gotoProjectSymbol()
-    atom.workspaceView.command "goto:file-symbol", => @gotoFileSymbol()
-    atom.workspaceView.command "goto:declaration", => @gotoDeclaration()
-    atom.workspaceView.command "goto:rebuild-index", => @index.rebuild()
-    atom.workspaceView.command "goto:invalidate-index", => @index.invalidate()
+    atom.commands.add 'atom-workspace', {
+      'mobile-preview:toggle': => @toggle()
+      'goto:project-symbol': => @gotoProjectSymbol()
+      'goto:file-symbol': => @gotoFileSymbol()
+      'goto:declaration': => @gotoDeclaration()
+      'goto:rebuild-index': => @index.rebuild()
+      'goto:invalidate-index': => @index.invalidate()
+    }
 
   deactivate: ->
     @index?.destroy()
@@ -27,11 +30,11 @@ module.exports =
     @gotoView?.destroy()
     @gotoView = null
 
-  serialize: -> { 'entries': @index.entries }
+  serialize: -> { entries: @index.entries }
 
   gotoDeclaration: ->
     symbols = @index.gotoDeclaration()
-    if symbols
+    if symbols and symbols.length
       @gotoView.populate(symbols)
 
   gotoProjectSymbol: ->
@@ -39,9 +42,8 @@ module.exports =
     @gotoView.populate(symbols)
 
   gotoFileSymbol: ->
-    v = atom.workspaceView.getActiveView()
-    e = v?.getEditor()
-    filePath = e?.getPath()
+    editor = atom.workspace.getActiveTextEditor()
+    filePath = editor?.getPath()
     if filePath
-      symbols = @index.getEditorSymbols(e)
-      @gotoView.populate(symbols, v)
+      symbols = @index.getEditorSymbols(editor)
+      @gotoView.populate(symbols, editor)

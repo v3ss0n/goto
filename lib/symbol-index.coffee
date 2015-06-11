@@ -5,6 +5,7 @@ _ = require 'underscore'
 minimatch = require 'minimatch'
 generate = require './symbol-generator'
 utils = require './symbol-utils'
+{CompositeDisposable} = require 'atom'
 
 module.exports =
 class SymbolIndex
@@ -31,8 +32,9 @@ class SymbolIndex
     # symbols can be cached without requiring a full project scan for cases where the Goto
     # Project Symbols command is not used.
 
-    @root = atom.project.getRootDirectory()
-    @repo = atom.project.getRepo()
+    @roots = atom.project.getDirectories()
+    @getProjectRepositories()
+
     @ignoredNames = atom.config.get('core.ignoredNames') ? []
     if typeof @ignoredNames is 'string'
       @ignoredNames = [ ignoredNames ]
@@ -46,6 +48,7 @@ class SymbolIndex
     # such as *.png that we don't have grammars for.  Instead of hardcoding them we'll record
     # them on the fly.  We'll clear this when we rescan directories.
 
+    @disposables = new CompositeDisposable
     @subscribe()
 
   invalidate: ->
@@ -53,9 +56,9 @@ class SymbolIndex
     @rescanDirectories = true
 
   subscribe: () ->
-    atom.project.on 'path-changed', =>
-      @root = atom.project.getRootDirectory()
-      @repo = atom.project.getRepo()
+    @disposables.add atom.project.onDidChangePaths =>
+      @roots = atom.project.getDirectories()
+      @getProjectRepositories()
       @invalidate()
 
     atom.config.observe 'core.ignoredNames', =>
@@ -69,23 +72,21 @@ class SymbolIndex
       @moreIgnoredNames = (n for n in @moreIgnoredNames.split(/[, \t]+/) when n?.length)
       @invalidate()
 
-    atom.project.eachBuffer (buffer) =>
-      # TODO: Do path-changed and reloaded trigger contents-modified?
-      buffer.on 'contents-modified', =>
-        @entries[buffer.getPath()] = null
-
-      buffer.on 'destroyed', =>
-        buffer.off()
-
-    atom.workspace.eachEditor (editor) =>
-      editor.on 'grammar-changed', =>
+    atom.workspace.observeTextEditors (editor) =>
+      editor_disposables = new CompositeDisposable
+      # Editor events
+      editor_disposables.add editor.onDidChangeGrammar =>
         @entries[editor.getPath()] = null
 
-      editor.on 'destroyed', =>
-        editor.off()
+      editor_disposables.add editor.onDidStopChanging =>
+        @entries[editor.getPath()] = null
+
+      editor_disposables.add editor.onDidDestroy ->
+        editor_disposables.dispose()
 
   destroy: ->
     @entries = null
+    @disposables.dispose()
 
   getEditorSymbols: (editor) ->
     # Return the symbols for the given editor, rescanning the file if necessary.
@@ -112,14 +113,16 @@ class SymbolIndex
           @processFile(fqn)
 
   rebuild: ->
-    if @root
-      @processDirectory(@root.path)
+    for root in @roots
+      @processDirectory(root.path)
     @rescanDirectories = false
     console.log('No Grammar:', Object.keys(@noGrammar)) if @logToConsole
 
   gotoDeclaration: ->
-    e = atom.workspace.getActiveEditor()
-    word = e?.getTextInRange(e.getCursor().getCurrentWordBufferRange())
+    editor = atom.workspace.getActiveTextEditor()
+    # Make a word selection based on current cursor
+    editor?.selectWordsContainingCursors()
+    word = editor?.getSelectedText()
     if not word?.length
       return null
 
@@ -127,7 +130,7 @@ class SymbolIndex
 
     # TODO: I'm quite sure this is not using Coffeescript idioms.  Rewrite.
 
-    filePath = e.getPath()
+    filePath = editor.getPath()
     matches = []
     @matchSymbol(matches, word, @entries[filePath])
     for fqn, symbols of @entries
@@ -148,12 +151,16 @@ class SymbolIndex
         if symbol.name is word
           matches.push(symbol)
 
+  getProjectRepositories: ->
+    Promise.all(@roots.map(
+      atom.project.repositoryForDirectory.bind(atom.project)
+      )).then((repos) => @repos = repos)
+
   processDirectory: (dirPath) ->
     if @logToConsole
       console.log('GOTO: directory', dirPath)
 
     entries = fs.readdirSync(dirPath)
-
     dirs = []
 
     for entry in entries
@@ -164,6 +171,7 @@ class SymbolIndex
           dirs.push(fqn)
         else if stats.isFile()
           @processFile(fqn)
+
     entries = null
 
     for dir in dirs
@@ -172,13 +180,13 @@ class SymbolIndex
   processFile: (fqn) ->
     console.log('GOTO: file', fqn) if @logToConsole
     text = fs.readFileSync(fqn, { encoding: 'utf8' })
-    grammar = atom.syntax.selectGrammar(fqn, text)
-    if grammar?.name isnt "Null Grammar"
+    grammar = atom.grammars.selectGrammar(fqn, text)
+    if grammar?.scopeName isnt 'text.plain.null-grammar'
       @entries[fqn] = generate(fqn, grammar, text)
     else
       @noGrammar[path.extname(fqn)] = true
 
-  keepPath: (filePath,isFile=true) ->
+  keepPath: (filePath, isFile = true) ->
     # Should we keep this path in @entries?  It is not kept if it is excluded by the
     # core ignoredNames setting or if the associated git repo ignore it.
 
@@ -203,8 +211,10 @@ class SymbolIndex
       console.log('GOTO: ignore/core', filePath) if @logToConsole
       return false
 
-    if @repo and @repo.isPathIgnored(filePath)
-      console.log('GOTO: ignore/git', filePath) if @logToConsole
-      return false
+    if @repos
+      for repo in @repos
+        if repo?.isPathIgnored(filePath)
+          console.log('GOTO: ignore/git', filePath) if @logToConsole
+          return false
 
     return true

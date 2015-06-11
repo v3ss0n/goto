@@ -1,7 +1,7 @@
 
 path = require 'path'
 fs = require 'fs'
-{$$, SelectListView} = require 'atom'
+{$$, SelectListView} = require 'atom-space-pen-views'
 utils = require './symbol-utils'
 
 module.exports =
@@ -9,55 +9,52 @@ class GotoView extends SelectListView
 
   initialize: ->
     super
-    @addClass('goto-view overlay from-top')
+    @addClass('goto-view fuzzy-finder')
+    # Use fuzzy-finder styles
 
-    @currentView = null
+    @currentEditor = null
     # If this is non-null, then the command was 'Goto File Symbol' and this is the current file's
-    # editor view.  Autoscroll to the selected item.
+    # editor view. Autoscroll to the selected item.
 
     @cancelPosition = null
     # The original position of the screen and selections so they can be restored if the user
-    # cancels.  This is only set by the Goto File Symbol command when auto-scrolling is enabled.
+    # cancels. This is only set by the Goto File Symbol command when auto-scrolling is enabled.
     # If set, it is an object containing:
     #  :firstRow - the editor's first visible row
     #  :selections - the original selections
 
   destroy: ->
     @cancel()
-    @detach()
+    @panel?.destroy()
 
   cancel: ->
     super
     @restoreCancelPosition()
-    @currentView = null
+    @currentEditor = null
     @cancelPosition = null
 
-  attach: ->
-    @storeFocusedElement()
-    atom.workspaceView.appendToTop(this)
-    @focusFilterEditor()
-
-  populate: (symbols, view) ->
-    @rememberCancelPosition(view)
+  populate: (symbols, editor) ->
+    @rememberCancelPosition(editor)
     @setItems(symbols)
-    @attach()
+    @show()
 
-  rememberCancelPosition: (view) ->
-    if not view or not atom.config.get('goto.autoScroll')
+  rememberCancelPosition: (editor) ->
+    if not editor or not atom.config.get('goto.autoScroll')
       return
 
-    @currentView = view
+    @currentEditor = editor
     @cancelPosition =
-      top: view.scrollTop()
-      selections: view.getEditor().getSelectedBufferRanges()
+      position: editor.getCursorBufferPosition()
+      selections: editor.getSelectedBufferRanges()
 
   restoreCancelPosition: ->
-    if @currentView and @cancelPosition
-      @currentView.getEditor().setSelectedBufferRanges(@cancelPosition.selections)
-      @currentView.scrollTop(@cancelPosition.top)
+    if @currentEditor and @cancelPosition
+      @currentEditor.setCursorBufferPosition(@cancelPosition.position)
+      if @cancelPosition.selections
+        @currentEditor.setSelectedBufferRanges(@cancelPosition.selections)
 
   forgetCancelPosition: ->
-    @currentView = null
+    @currentEditor = null
     @cancelPosition = null
 
   getFilterKey: -> 'name'
@@ -66,14 +63,10 @@ class GotoView extends SelectListView
     # Hook the selection of an item so we can scroll the current buffer to the item.
     super
     symbol = @getSelectedItem()
-    @onItemSelected(view, symbol)
+    @onItemSelected(symbol)
 
-  onItemSelected: (view, symbol) ->
-    if @currentView
-      editor = @currentView.getEditor()
-      @currentView.scrollToBufferPosition(symbol.position, center: true)
-      editor.setCursorBufferPosition(symbol.position)
-      editor.moveCursorToFirstCharacterOfLine()
+  onItemSelected: (symbol) ->
+    @currentEditor?.setCursorBufferPosition(symbol.position)
 
   viewForItem: (symbol) ->
     $$ ->
@@ -92,9 +85,21 @@ class GotoView extends SelectListView
   confirmed: (symbol) ->
     @forgetCancelPosition()
 
-    if not fs.existsSync(atom.project.resolve(symbol.path))
+    if not fs.existsSync(symbol.path)
       @setError('Selected file does not exist')
       setTimeout((=> @setError()), 2000)
-    else
+    else if atom.workspace.getActiveTextEditor()
       @cancel()
       utils.gotoSymbol(symbol)
+
+  show: ->
+    @storeFocusedElement()
+    @panel ?= atom.workspace.addModalPanel(item: this)
+    @panel.show()
+    @focusFilterEditor()
+
+  hide: ->
+    @panel?.hide()
+
+  cancelled: ->
+    @hide()

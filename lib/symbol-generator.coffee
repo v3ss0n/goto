@@ -38,14 +38,14 @@ module.exports = (path, grammar, text) ->
 
       nextIsSymbol = isbefore(token)
 
-      offset += token.bufferDelta
+      offset += token.value.length
 
   symbols
 
 cleanSymbol = (token) ->
   # Return the token name.  Will return null if symbol is not a valid name.
   name = token.value.trim().replace(/"/g, '')
-  name.length ? name : null;
+  name || null
 
 issymbol = (token) ->
   # I'm a little unclear about this :\ so this might be much easier than

@@ -1,10 +1,8 @@
 # goto package
 
-**This package has been unpublished because I am no longer using Atom.  Let me know if you are willing to take this project over.**
+Provides “goto symbol” functionality for the current file or the entire project.
 
-Provides "goto symbol" functionality for the current file or the entire project.
-
-This is a replacement for Atom's built-in symbols-view package that uses Atom's own syntax files
+This is a replacement for Atom’s built-in symbols-view package that uses Atom’s own syntax files
 to identify symbols rather than ctags.  The ctags project is very useful but it is never going
 to keep up with all of the new Atom syntaxes that will be created as Atom grows.
 
