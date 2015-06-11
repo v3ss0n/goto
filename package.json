@@ -8,8 +8,8 @@
     "atom-text-editor": ["goto:file-symbol", "goto:declaration"],
     "atom-workspace": ["goto:project-symbol", "goto:rebuild-index", "goto:invalidate-index"]
   },
-  "repository": "https://github.com/mkleehammer/goto",
-  "bugs": "http://github.com/mkleehammer/goto/issues",
+  "repository": "https://github.com/v3ss0n/goto",
+  "bugs": "http://github.com/v3ss0n/goto/issues",
   "license": "MIT",
   "engines": {
     "atom": ">0.50.0"
