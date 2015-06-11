@@ -1,12 +1,19 @@
 {
   "name": "goto",
   "main": "./lib/index",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "description": "Provides Go To Symbol based on syntaxes",
   "author": "Michael Kleehammer <michael@kleehammer.com>",
   "activationCommands": {
-    "atom-text-editor": ["goto:file-symbol", "goto:declaration"],
-    "atom-workspace": ["goto:project-symbol", "goto:rebuild-index", "goto:invalidate-index"]
+    "atom-text-editor": [
+      "goto:file-symbol",
+      "goto:declaration"
+    ],
+    "atom-workspace": [
+      "goto:project-symbol",
+      "goto:rebuild-index",
+      "goto:invalidate-index"
+    ]
   },
   "repository": "https://github.com/v3ss0n/goto",
   "bugs": "http://github.com/v3ss0n/goto/issues",
