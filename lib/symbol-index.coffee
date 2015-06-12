@@ -157,6 +157,10 @@ class SymbolIndex
       atom.project.repositoryForDirectory.bind(atom.project)
       )).then((repos) => @repos = repos)
 
+  getFileTypeKey: (fqn) ->
+    # If no extension, use the filename as ext (e.g. .gitignore)
+    path.extname(fqn) || path.parse(fqn).base
+
   processDirectory: (dirPath) ->
     if @logToConsole
       console.log('GOTO: directory', dirPath)
@@ -182,9 +186,8 @@ class SymbolIndex
     console.log('GOTO: file', fqn) if @logToConsole
     text = fs.readFileSync(fqn, { encoding: 'utf8' })
     grammar = atom.grammars.selectGrammar(fqn, text)
-    # If no extension, use the filename as ext (e.g. .gitignore)
-    ext = path.extname(fqn) || path.parse(fqn).base
-    isSkipGrammar = @skipGrammars[ext]
+    fileType = @getFileTypeKey(fqn)
+    isSkipGrammar = @skipGrammars[fileType]
     if not grammar
       return
 
@@ -209,14 +212,14 @@ class SymbolIndex
       if isSkipGrammar is false
         @entries[fqn] = generate(fqn, grammar, text)
 
-    @skipGrammars[ext] = isSkipGrammar
+    @skipGrammars[fileType] = isSkipGrammar
 
   keepPath: (filePath, isFile = true) ->
     # Should we keep this path in @entries?  It is not kept if it is excluded by the
     # core ignoredNames setting or if the associated git repo ignore it.
 
     base = path.basename(filePath)
-    ext = path.extname(base)
+    fileType = @getFileTypeKey(filePath)
 
     # Files of this type are known not to have a grammar
     if isFile and @skipGrammars[ext]
@@ -232,7 +235,7 @@ class SymbolIndex
       console.log('GOTO: ignore/core', filePath) if @logToConsole
       return false
 
-    if ext and _.contains(@ignoredNames, '*#{ext}')
+    if fileType and _.contains(@ignoredNames, '*#{fileType}')
       console.log('GOTO: ignore/core', filePath) if @logToConsole
       return false
 
