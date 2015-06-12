@@ -218,8 +218,8 @@ class SymbolIndex
     base = path.basename(filePath)
     ext = path.extname(base)
 
-    # files with this extensions are known not to have a grammar.
-    if isFile and @skipGrammars[ext]?
+    # Files of this type are known not to have a grammar
+    if isFile and @skipGrammars[ext]
       console.log('GOTO: ignore/grammar', filePath) if @logToConsole
       return false
 
