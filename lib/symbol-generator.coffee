@@ -27,7 +27,7 @@ module.exports = (path, grammar, text) ->
     offset = 0
     prev = null
     for token in tokens
-      if nextIsSymbol or issymbol(token)
+      if nextIsSymbol or isSymbol(token)
         nextIsSymbol = false
 
         symbol = cleanSymbol(token)
@@ -36,7 +36,7 @@ module.exports = (path, grammar, text) ->
             symbols.push({ name: token.value, path: path, position: new Point(lineno, offset) })
             prev = token
 
-      nextIsSymbol = isbefore(token)
+      nextIsSymbol = isBefore(token)
 
       offset += token.value.length
 
@@ -47,7 +47,7 @@ cleanSymbol = (token) ->
   name = token.value.trim().replace(/"/g, '')
   name || null
 
-issymbol = (token) ->
+isSymbol = (token) ->
   # I'm a little unclear about this :\ so this might be much easier than
   # I've made it out to be.  If we really can use a single regular expression we can
   # switch to array.some() and eliminate this method all together
@@ -57,7 +57,7 @@ issymbol = (token) ->
         return true
   return false
 
-isbefore = (token) ->
+isBefore = (token) ->
   # Does this token indicate that the following token is a symbol?
   if token.value.trim().length and token.scopes
     for scope in token.scopes
@@ -74,7 +74,6 @@ mergeAdjacent = (prevToken, thisToken, symbols, offset) ->
   #
   # Returns true if the two symbols are adjacent and will merge `thisToken` into the
   # previous symbol.  Return false if thisToken is not adjacent to the previous symbol.
-
   if offset and prevToken
     prevSymbol = symbols[symbols.length-1]
     if offset is prevSymbol.position.column + prevToken.value.length
