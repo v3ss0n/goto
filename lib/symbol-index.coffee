@@ -221,7 +221,7 @@ class SymbolIndex
     fileType = @getFileTypeKey(filePath)
 
     # Files of this type are known not to have a grammar
-    if isFile and @skipGrammars[ext]
+    if isFile and @skipGrammars[fileType]
       console.log('GOTO: ignore/grammar', filePath) if @logToConsole
       return false
 
