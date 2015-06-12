@@ -1,5 +1,6 @@
 {Point} = require 'atom'
 patterns = require './symbol-pattern-definitions'
+logToConsole = atom.config.get('goto.logToConsole') ? false
 
 module.exports = (path, grammar, text) ->
   lines = grammar.tokenizeLines(text)
@@ -53,7 +54,7 @@ isBefore = (token) ->
   # Does this token indicate that the following token is a symbol?
   if token.value.trim().length and token.scopes
     for scope in token.scopes
-      console.log('checking', scope, '=', patterns.before.test(scope))
+      console.log('checking', scope, '=', patterns.before.test(scope)) if logToConsole
       if patterns.before.test(scope)
         return true
   return false

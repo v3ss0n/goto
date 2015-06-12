@@ -162,8 +162,7 @@ class SymbolIndex
     path.extname(fqn) || path.parse(fqn).base
 
   processDirectory: (dirPath) ->
-    if @logToConsole
-      console.log('GOTO: directory', dirPath)
+    console.log('GOTO: directory', dirPath) if @logToConsole
 
     entries = fs.readdirSync(dirPath)
     dirs = []
