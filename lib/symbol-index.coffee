@@ -4,6 +4,7 @@ path = require 'path'
 _ = require 'underscore'
 minimatch = require 'minimatch'
 generate = require './symbol-generator'
+patterns = require './symbol-pattern-definitions'
 utils = require './symbol-utils'
 {CompositeDisposable} = require 'atom'
 
@@ -43,7 +44,7 @@ class SymbolIndex
     @moreIgnoredNames = atom.config.get('goto.moreIgnoredNames') ? ''
     @moreIgnoredNames = (n for n in @moreIgnoredNames.split(/[, \t]+/) when n?.length)
 
-    @noGrammar = {}
+    @skipGrammars = {}
     # File extensions that we've found have no grammar.  There are probably a lot of files
     # such as *.png that we don't have grammars for.  Instead of hardcoding them we'll record
     # them on the fly.  We'll clear this when we rescan directories.
@@ -116,7 +117,7 @@ class SymbolIndex
     for root in @roots
       @processDirectory(root.path)
     @rescanDirectories = false
-    console.log('No Grammar:', Object.keys(@noGrammar)) if @logToConsole
+    console.log('No Grammar:', Object.keys(@skipGrammars)) if @logToConsole
 
   gotoDeclaration: ->
     editor = atom.workspace.getActiveTextEditor()
@@ -181,10 +182,34 @@ class SymbolIndex
     console.log('GOTO: file', fqn) if @logToConsole
     text = fs.readFileSync(fqn, { encoding: 'utf8' })
     grammar = atom.grammars.selectGrammar(fqn, text)
-    if grammar?.scopeName isnt 'text.plain.null-grammar'
-      @entries[fqn] = generate(fqn, grammar, text)
-    else
-      @noGrammar[path.extname(fqn)] = true
+    # If no extension, use the filename as ext (e.g. .gitignore)
+    ext = path.extname(fqn) || path.parse(fqn).base
+    isSkipGrammar = @skipGrammars[ext]
+    if not grammar
+      return
+
+    #debugger
+    if not isSkipGrammar
+      if isSkipGrammar is undefined
+        # Is it a null grammar or there are no patterns that could match
+        if grammar.scopeName is 'text.plain.null-grammar' or not grammar.rawPatterns
+          isSkipGrammar = true
+        else
+          # Check rawPatterns and rawPatterns.captures for any match
+          isPatternMatch = grammar.rawPatterns.some((pattern) ->
+            isMatch = patterns.symbol.test(pattern.name)
+            if not isMatch and pattern.captures
+              # Check captures, which is an optional object (not an array)
+              for i, capture of pattern.captures
+                if isMatch = patterns.symbol.test(capture.name)
+                  break
+            isMatch
+          )
+          isSkipGrammar = not isPatternMatch
+      if isSkipGrammar is false
+        @entries[fqn] = generate(fqn, grammar, text)
+
+    @skipGrammars[ext] = isSkipGrammar
 
   keepPath: (filePath, isFile = true) ->
     # Should we keep this path in @entries?  It is not kept if it is excluded by the
@@ -194,7 +219,7 @@ class SymbolIndex
     ext = path.extname(base)
 
     # files with this extensions are known not to have a grammar.
-    if isFile and @noGrammar[ext]?
+    if isFile and @skipGrammars[ext]?
       console.log('GOTO: ignore/grammar', filePath) if @logToConsole
       return false
 
