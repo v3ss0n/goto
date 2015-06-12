@@ -1,20 +1,5 @@
-
 {Point} = require 'atom'
-
-# I'm expecting this to grow a lot.  We'll also need configuration
-# that can be added to dynamically, I think.
-
-resym = /// ^ (
-    entity.name.type.class
-  | entity.name.function
-  | entity.other.attribute-name.class
-  ) ///
-
-# A simplistic regexp that is used to match the item immediately following.  I'll eventually
-# need something a bit more complex.
-rebefore =  /// ^ (
-  meta.rspec.behaviour
-) ///
+patterns = require './symbol-pattern-definitions'
 
 module.exports = (path, grammar, text) ->
   lines = grammar.tokenizeLines(text)
@@ -51,18 +36,25 @@ isSymbol = (token) ->
   # I'm a little unclear about this :\ so this might be much easier than
   # I've made it out to be.  If we really can use a single regular expression we can
   # switch to array.some() and eliminate this method all together
+
+  # Check scopes in reverse (from most specific to least specific)
+  # Includes negative regular expression check, which is overridden by match at same specificity
+  # However, a scope match will be overridden by a more specific scope negation
+  # Unless a general symbol match matches a more specific scope
   if token.value.trim().length and token.scopes
-    for scope in token.scopes
-      if resym.test(scope)
+    for scope in token.scopes.reverse()
+      if patterns.symbol.test(scope)
         return true
+      if patterns.notSymbol.test(scope)
+        return false
   return false
 
 isBefore = (token) ->
   # Does this token indicate that the following token is a symbol?
   if token.value.trim().length and token.scopes
     for scope in token.scopes
-      console.log('checking', scope, '=', rebefore.test(scope))
-      if rebefore.test(scope)
+      console.log('checking', scope, '=', patterns.before.test(scope))
+      if patterns.before.test(scope)
         return true
   return false
 
