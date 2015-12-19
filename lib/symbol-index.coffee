@@ -1,5 +1,5 @@
 
-fs = require 'fs'
+fs = require 'fs-plus'
 path = require 'path'
 _ = require 'underscore'
 minimatch = require 'minimatch'
@@ -114,7 +114,11 @@ class SymbolIndex
 
   rebuild: ->
     for root in @roots
-      @processDirectory(root.path)
+      fs.traverseTreeSync(
+        root.path,
+        (filePath) => @processFile filePath,
+        (filePath) => @keepPath filePath
+      )
     @rescanDirectories = false
     console.log('No Grammar:', Object.keys(@noGrammar)) if @logToConsole
 
@@ -156,27 +160,6 @@ class SymbolIndex
       atom.project.repositoryForDirectory.bind(atom.project)
       )).then((repos) => @repos = repos)
 
-  processDirectory: (dirPath) ->
-    if @logToConsole
-      console.log('GOTO: directory', dirPath)
-
-    entries = fs.readdirSync(dirPath)
-    dirs = []
-
-    for entry in entries
-      fqn = path.join(dirPath, entry)
-      stats = fs.statSync(fqn)
-      if @keepPath(fqn,stats.isFile())
-        if stats.isDirectory()
-          dirs.push(fqn)
-        else if stats.isFile()
-          @processFile(fqn)
-
-    entries = null
-
-    for dir in dirs
-      @processDirectory(dir)
-
   processFile: (fqn) ->
     console.log('GOTO: file', fqn) if @logToConsole
     text = fs.readFileSync(fqn, { encoding: 'utf8' })
@@ -186,10 +169,11 @@ class SymbolIndex
     else
       @noGrammar[path.extname(fqn)] = true
 
-  keepPath: (filePath, isFile = true) ->
+  keepPath: (filePath) ->
     # Should we keep this path in @entries?  It is not kept if it is excluded by the
     # core ignoredNames setting or if the associated git repo ignore it.
 
+    isFile  = fs.isFileSync(filePath)
     base = path.basename(filePath)
     ext = path.extname(base)
 
