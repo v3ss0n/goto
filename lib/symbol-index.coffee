@@ -32,9 +32,6 @@ class SymbolIndex
     # symbols can be cached without requiring a full project scan for cases where the Goto
     # Project Symbols command is not used.
 
-    @roots = atom.project.getDirectories()
-    @getProjectRepositories()
-
     @ignoredNames = atom.config.get('core.ignoredNames') ? []
     if typeof @ignoredNames is 'string'
       @ignoredNames = [ ignoredNames ]
@@ -57,8 +54,6 @@ class SymbolIndex
 
   subscribe: () ->
     @disposables.add atom.project.onDidChangePaths =>
-      @roots = atom.project.getDirectories()
-      @getProjectRepositories()
       @invalidate()
 
     atom.config.observe 'core.ignoredNames', =>
@@ -113,7 +108,7 @@ class SymbolIndex
           @processFile(fqn)
 
   rebuild: ->
-    for root in @roots
+    for root in atom.project.getDirectories()
       @processDirectory(root.path)
     @rescanDirectories = false
     console.log('No Grammar:', Object.keys(@noGrammar)) if @logToConsole
@@ -150,11 +145,6 @@ class SymbolIndex
       for symbol in symbols
         if symbol.name is word
           matches.push(symbol)
-
-  getProjectRepositories: ->
-    Promise.all(@roots.map(
-      atom.project.repositoryForDirectory.bind(atom.project)
-      )).then((repos) => @repos = repos)
 
   processDirectory: (dirPath) ->
     if @logToConsole
@@ -211,10 +201,9 @@ class SymbolIndex
       console.log('GOTO: ignore/core', filePath) if @logToConsole
       return false
 
-    if @repos
-      for repo in @repos
-        if repo?.isPathIgnored(filePath)
-          console.log('GOTO: ignore/git', filePath) if @logToConsole
-          return false
+    for repo in atom.project.repositories
+      if repo?.isPathIgnored(filePath)
+        console.log('GOTO: ignore/git', filePath) if @logToConsole
+        return false
 
     return true
