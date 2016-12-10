@@ -37,7 +37,7 @@ class SymbolIndex
 
     @ignoredNames = atom.config.get('core.ignoredNames') ? []
     if typeof @ignoredNames is 'string'
-      @ignoredNames = [ ignoredNames ]
+      @ignoredNames = [ @ignoredNames ]
 
     @logToConsole = atom.config.get('goto.logToConsole')
     @moreIgnoredNames = atom.config.get('goto.moreIgnoredNames')
@@ -64,7 +64,7 @@ class SymbolIndex
     atom.config.observe 'core.ignoredNames', =>
       @ignoredNames = atom.config.get('core.ignoredNames') ? []
       if typeof @ignoredNames is 'string'
-        @ignoredNames = [ ignoredNames ]
+        @ignoredNames = [ @ignoredNames ]
       @invalidate()
 
     atom.config.observe 'goto.moreIgnoredNames', =>
