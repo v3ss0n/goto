@@ -39,8 +39,8 @@ class SymbolIndex
     if typeof @ignoredNames is 'string'
       @ignoredNames = [ ignoredNames ]
 
-    @logToConsole = atom.config.get('goto.logToConsole') ? false
-    @moreIgnoredNames = atom.config.get('goto.moreIgnoredNames') ? ''
+    @logToConsole = atom.config.get('goto.logToConsole')
+    @moreIgnoredNames = atom.config.get('goto.moreIgnoredNames')
     @moreIgnoredNames = (n for n in @moreIgnoredNames.split(/[, \t]+/) when n?.length)
 
     @noGrammar = {}
@@ -68,7 +68,7 @@ class SymbolIndex
       @invalidate()
 
     atom.config.observe 'goto.moreIgnoredNames', =>
-      @moreIgnoredNames = atom.config.get('goto.moreIgnoredNames') ? ''
+      @moreIgnoredNames = atom.config.get('goto.moreIgnoredNames')
       @moreIgnoredNames = (n for n in @moreIgnoredNames.split(/[, \t]+/) when n?.length)
       @invalidate()
 
