@@ -172,7 +172,7 @@ class SymbolIndex
       return false
 
     for glob in @moreIgnoredNames
-      if minimatch(base, glob)
+      if minimatch(base, glob, { dot: true })
         console.log('GOTO: ignore/core', filePath) if @logToConsole
         return false
 
