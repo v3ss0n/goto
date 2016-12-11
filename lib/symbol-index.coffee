@@ -32,12 +32,9 @@ class SymbolIndex
     # symbols can be cached without requiring a full project scan for cases where the Goto
     # Project Symbols command is not used.
 
-    @roots = atom.project.getDirectories()
-    @getProjectRepositories()
-
     @ignoredNames = atom.config.get('core.ignoredNames') ? []
     if typeof @ignoredNames is 'string'
-      @ignoredNames = [ ignoredNames ]
+      @ignoredNames = [ @ignoredNames ]
 
     @logToConsole = atom.config.get('goto.logToConsole') ? false
     @moreIgnoredNames = atom.config.get('goto.moreIgnoredNames') ? ''
@@ -57,14 +54,12 @@ class SymbolIndex
 
   subscribe: () ->
     @disposables.add atom.project.onDidChangePaths =>
-      @roots = atom.project.getDirectories()
-      @getProjectRepositories()
       @invalidate()
 
     atom.config.observe 'core.ignoredNames', =>
       @ignoredNames = atom.config.get('core.ignoredNames') ? []
       if typeof @ignoredNames is 'string'
-        @ignoredNames = [ ignoredNames ]
+        @ignoredNames = [ @ignoredNames ]
       @invalidate()
 
     atom.config.observe 'goto.moreIgnoredNames', =>
@@ -113,7 +108,7 @@ class SymbolIndex
           @processFile(fqn)
 
   rebuild: ->
-    for root in @roots
+    for root in atom.project.getDirectories()
       fs.traverseTreeSync(
         root.path,
         (filePath) => @processFile filePath,
@@ -155,11 +150,6 @@ class SymbolIndex
         if symbol.name is word
           matches.push(symbol)
 
-  getProjectRepositories: ->
-    Promise.all(@roots.map(
-      atom.project.repositoryForDirectory.bind(atom.project)
-      )).then((repos) => @repos = repos)
-
   processFile: (fqn) ->
     console.log('GOTO: file', fqn) if @logToConsole
     text = fs.readFileSync(fqn, { encoding: 'utf8' })
@@ -195,10 +185,9 @@ class SymbolIndex
       console.log('GOTO: ignore/core', filePath) if @logToConsole
       return false
 
-    if @repos
-      for repo in @repos
-        if repo?.isPathIgnored(filePath)
-          console.log('GOTO: ignore/git', filePath) if @logToConsole
-          return false
+    for repo in atom.project.repositories
+      if repo?.isPathIgnored(filePath)
+        console.log('GOTO: ignore/git', filePath) if @logToConsole
+        return false
 
     return true

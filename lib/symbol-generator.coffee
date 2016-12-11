@@ -61,7 +61,6 @@ isbefore = (token) ->
   # Does this token indicate that the following token is a symbol?
   if token.value.trim().length and token.scopes
     for scope in token.scopes
-      console.log('checking', scope, '=', rebefore.test(scope))
       if rebefore.test(scope)
         return true
   return false
