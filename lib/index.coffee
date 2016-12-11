@@ -25,7 +25,6 @@ module.exports =
     @index = new SymbolIndex(state?.entries)
     @gotoView = new GotoView()
     atom.commands.add 'atom-workspace', {
-      'mobile-preview:toggle': => @toggle()
       'goto:project-symbol': => @gotoProjectSymbol()
       'goto:file-symbol': => @gotoFileSymbol()
       'goto:declaration': => @gotoDeclaration()
