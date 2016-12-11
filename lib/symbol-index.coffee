@@ -1,7 +1,6 @@
 
 fs = require 'fs-plus'
 path = require 'path'
-_ = require 'underscore'
 minimatch = require 'minimatch'
 generate = require './symbol-generator'
 utils = require './symbol-utils'
@@ -177,11 +176,11 @@ class SymbolIndex
         console.log('GOTO: ignore/core', filePath) if @logToConsole
         return false
 
-    if _.contains(@ignoredNames, base)
+    if @ignoredNames.includes(base)
       console.log('GOTO: ignore/core', filePath) if @logToConsole
       return false
 
-    if ext and _.contains(@ignoredNames, '*#{ext}')
+    if ext and @ignoredNames.includes('*#{ext}')
       console.log('GOTO: ignore/core', filePath) if @logToConsole
       return false
 
