@@ -150,6 +150,8 @@ class SymbolIndex
           matches.push(symbol)
 
   processFile: (fqn) ->
+    if not @keepPath(fqn)
+      return
     console.log('GOTO: file', fqn) if @logToConsole
     text = fs.readFileSync(fqn, { encoding: 'utf8' })
     grammar = atom.grammars.selectGrammar(fqn, text)
