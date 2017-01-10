@@ -103,7 +103,7 @@ class SymbolIndex
       @rebuild()
     else
       for fqn, symbols of @entries
-        if symbols is null and @keepPath(fqn)
+        if symbols is null
           @processFile(fqn)
 
   rebuild: ->
