@@ -110,7 +110,7 @@ class SymbolIndex
     for root in atom.project.getDirectories()
       fs.traverseTreeSync(
         root.path,
-        (filePath) => @processFile filePath,
+        (filePath) => @processFile filePath if @keepPath filePath,
         (filePath) => @keepPath filePath
       )
     @rescanDirectories = false
@@ -150,8 +150,6 @@ class SymbolIndex
           matches.push(symbol)
 
   processFile: (fqn) ->
-    if not @keepPath(fqn)
-      return
     console.log('GOTO: file', fqn) if @logToConsole
     text = fs.readFileSync(fqn, { encoding: 'utf8' })
     grammar = atom.grammars.selectGrammar(fqn, text)
