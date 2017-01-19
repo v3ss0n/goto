@@ -103,14 +103,14 @@ class SymbolIndex
       @rebuild()
     else
       for fqn, symbols of @entries
-        if symbols is null and @keepPath(fqn)
+        if symbols is null
           @processFile(fqn)
 
   rebuild: ->
     for root in atom.project.getDirectories()
       fs.traverseTreeSync(
         root.path,
-        (filePath) => @processFile filePath,
+        (filePath) => @processFile filePath if @keepPath filePath,
         (filePath) => @keepPath filePath
       )
     @rescanDirectories = false
